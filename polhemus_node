@@ -1,0 +1,93 @@
+//dispaly pose tf origin is polhemus
+#include <ros/ros.h>
+#include <stdio.h>
+#include <string.h>
+#include <stdlib.h>
+#include <errno.h>
+#include <termios.h>
+#include <iostream>
+#include "serial_lib.h"
+#define SIOFD_NAME_SIZE 516
+#define RECV_DATA_SIZE 256
+
+int main(int argc,char *argv[])
+{
+        //シリアルポート仮想ファイルディスクリプタ
+        int sci_fd, string_num, buff_num, data_num, k,loop_num=0;
+        double x;
+        int retval = -1;
+        char sci_fd_name[SIOFD_NAME_SIZE];//シリアルポート仮想ファイル名
+        char buff[256];//送受信データ
+        char tmp[10];
+        double xx[8];
+        memset(buff,0x00,RECV_DATA_SIZE);
+        memset(sci_fd_name,0x00,SIOFD_NAME_SIZE);//シリアルポートの初期化
+        strncpy(sci_fd_name,"/dev/ttyUSB0",SIOFD_NAME_SIZE);
+        sci_fd = init_sci(sci_fd_name);
+        
+        if(sci_fd == -1)
+        {
+                printf("init sci failed.\n");
+                return retval;
+        }
+        
+
+        ros::init(argc, argv, "test_button_state");
+        ros::NodeHandle n;
+        cout << "Initializing node... " << endl;
+        ros::Publisher pub_axis = n.advertise<std_msgs::UInt16>("fastrak_topic", 10);
+        geometry_msgs::Pose pub_msg;
+        while(1){
+                string_num=0;
+                buff_num=0;
+                data_num=0;
+                retval = str_get_sci(sci_fd,buff,RECV_DATA_SIZE);
+                if(retval == -1){
+                            printf("recv failed.\n");
+                            return retval;
+                }
+               //~ printf("%s\n",buff);
+                pub_msg.header.stamp = ros::Time::now();
+                pub_msg.header.frame_id = "world";
+               if(loop_num < 5){
+                   loop_num++;
+                   printf("%d\n",loop_num);
+               }
+               else{
+               do{
+                            if(buff[buff_num] == '\0'){
+                                tmp[string_num] ='\0';
+                                x = atof(tmp);
+                                xx[data_num]=x;
+                                for(k=0; k<10 ;k++){tmp[k]=0;}
+                                string_num=0;
+                                data_num=0;
+                                break;
+                            }
+                            else if(buff[buff_num] == ' '){
+                                tmp[string_num] ='\0';
+                                x = atof(tmp);
+                                xx[data_num]=x;
+                                while(buff[buff_num+1] == ' '){buff_num++;}
+                                for(k=0; k<10 ;k++){tmp[k]=0;}
+                                string_num=0;
+                                data_num++;
+                                buff_num++;
+                            }
+                            else{
+                                tmp[string_num] =buff[buff_num];
+                                string_num++;
+                                buff_num++;
+                            }
+                        
+                    }while(1);
+                    printf("%.2f %.2f %.2f %.2f %.2f %.2f\n",xx[1],xx[2],xx[3],xx[4],xx[5],xx[6]);
+                }
+                pob_msg.position.x = xx[1];pob_msg.position.y = xx[2];pob_msg.position.z = xx[3];
+                pob_msg.orientation.x = xx[4];pob_msg.orientation.y = xx[5];pob_msg.orientation.z = xx[6];pob_msg.orientation.w = xx[7];
+                pub_rate.publish(rate);
+        }
+        close_sci(sci_fd);
+
+        return retval;
+}

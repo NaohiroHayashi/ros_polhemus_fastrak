@@ -6,22 +6,22 @@
 #include <errno.h>
 #include <termios.h>
 #include <iostream>
+#include <geometry_msgs/PoseStamped.h>
 #include "serial_lib.h"
 #define SIOFD_NAME_SIZE 516
 #define RECV_DATA_SIZE 256
-
-int main(int argc,char *argv[])
+using namespace std;
+int main(int argc, char **argv)
 {
-        //シリアルポート仮想ファイルディスクリプタ
-        int sci_fd, string_num, buff_num, data_num, k,loop_num=0;
-        double x;
+        int sci_fd, string_num, buff_num, data_num, loop_num=0;
+        double num;
         int retval = -1;
-        char sci_fd_name[SIOFD_NAME_SIZE];//シリアルポート仮想ファイル名
-        char buff[256];//送受信データ
+        char sci_fd_name[SIOFD_NAME_SIZE];
+        char buff[256];//readdata
         char tmp[10];
-        double xx[8];
+        double pose_data[8];// terminal_NO,position_x,y,z,quaternion_x,y,z,w
         memset(buff,0x00,RECV_DATA_SIZE);
-        memset(sci_fd_name,0x00,SIOFD_NAME_SIZE);//シリアルポートの初期化
+        memset(sci_fd_name,0x00,SIOFD_NAME_SIZE);//initialize serial port
         strncpy(sci_fd_name,"/dev/ttyUSB0",SIOFD_NAME_SIZE);
         sci_fd = init_sci(sci_fd_name);
         
@@ -31,12 +31,13 @@ int main(int argc,char *argv[])
                 return retval;
         }
         
-
-        ros::init(argc, argv, "test_button_state");
+        ros::init(argc, argv, "polhemas_node");
         ros::NodeHandle n;
         cout << "Initializing node... " << endl;
-        ros::Publisher pub_axis = n.advertise<std_msgs::UInt16>("fastrak_topic", 10);
-        geometry_msgs::Pose pub_msg;
+        ros::Publisher pub_pose = n.advertise<geometry_msgs::PoseStamped>("fastrak_topic", 10);
+        geometry_msgs::PoseStamped pub_msg;
+        
+        
         while(1){
                 string_num=0;
                 buff_num=0;
@@ -46,30 +47,31 @@ int main(int argc,char *argv[])
                             printf("recv failed.\n");
                             return retval;
                 }
-               //~ printf("%s\n",buff);
+
                 pub_msg.header.stamp = ros::Time::now();
                 pub_msg.header.frame_id = "world";
+                
+                //wait some sec for stable
                if(loop_num < 5){
                    loop_num++;
-                   printf("%d\n",loop_num);
                }
                else{
                do{
                             if(buff[buff_num] == '\0'){
                                 tmp[string_num] ='\0';
-                                x = atof(tmp);
-                                xx[data_num]=x;
-                                for(k=0; k<10 ;k++){tmp[k]=0;}
+                                num = atof(tmp);
+                                pose_data[data_num]=num/100.0;
+                                for(int k=0; k<10 ;k++){tmp[k]=0;}
                                 string_num=0;
                                 data_num=0;
                                 break;
                             }
                             else if(buff[buff_num] == ' '){
                                 tmp[string_num] ='\0';
-                                x = atof(tmp);
-                                xx[data_num]=x;
+                                num = atof(tmp);
+                                pose_data[data_num]=num/100.0;
                                 while(buff[buff_num+1] == ' '){buff_num++;}
-                                for(k=0; k<10 ;k++){tmp[k]=0;}
+                                for(int k=0; k<10 ;k++){tmp[k]=0;}
                                 string_num=0;
                                 data_num++;
                                 buff_num++;
@@ -81,11 +83,18 @@ int main(int argc,char *argv[])
                             }
                         
                     }while(1);
-                    printf("%.2f %.2f %.2f %.2f %.2f %.2f\n",xx[1],xx[2],xx[3],xx[4],xx[5],xx[6]);
+                    printf("%.2f %.2f %.2f %.2f %.2f %.2f %.2f\n",pose_data[1],pose_data[2],pose_data[3],pose_data[4],pose_data[5],pose_data[6],pose_data[7]);
                 }
-                pob_msg.position.x = xx[1];pob_msg.position.y = xx[2];pob_msg.position.z = xx[3];
-                pob_msg.orientation.x = xx[4];pob_msg.orientation.y = xx[5];pob_msg.orientation.z = xx[6];pob_msg.orientation.w = xx[7];
-                pub_rate.publish(rate);
+                
+                pub_msg.pose.position.x = pose_data[1];
+                pub_msg.pose.position.y = pose_data[2];
+                pub_msg.pose.position.z = pose_data[3];
+                pub_msg.pose.orientation.x = pose_data[4];
+                pub_msg.pose.orientation.y = pose_data[5];
+                pub_msg.pose.orientation.z = pose_data[6];
+                pub_msg.pose.orientation.w = pose_data[7];
+                pub_pose.publish(pub_msg);
+                ros::spinOnce();
         }
         close_sci(sci_fd);
 

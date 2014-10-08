@@ -7,7 +7,7 @@
 #include <termios.h>
 #include <iostream>
 #include <geometry_msgs/PoseStamped.h>
-#include "serial_lib.h"
+#include <serial_lib.h>
 #define SIOFD_NAME_SIZE 516
 #define RECV_DATA_SIZE 256
 using namespace std;

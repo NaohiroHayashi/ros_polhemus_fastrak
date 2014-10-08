@@ -2,7 +2,9 @@ ros_polhemus_fastrak
 ====================
 Unfinished
 
-This node publishs fastrack(polhemus) pose data as geometry_msgs/PoseStamped on ROS.
+This node publishes fastrack(polhemus) pose data as geometry_msgs/PoseStamped on ROS
+and broadcasts the pose as "/fastrack" from "/world" on TF.
 
-This node access the fastrack via Serial port and only read the data,
+
+This node access the fastrack via Serial port and has only read the data,
 so you need to initialise and set the parameters of the fastrack using other serial terminal.
